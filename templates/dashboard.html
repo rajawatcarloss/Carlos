@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Telegram Manager{% endblock %}
+{% block content %}
+<div class="container">
+    <h1 class="mb-4"><i class="fas fa-chart-line"></i> Dashboard</h1>
+    <div class="row mb-4">
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card text-center p-4">
+                <div class="stat-value" id="total-accounts">{{ stats.total_accounts }}</div>
+                <div class="text-muted mt-2">Total Accounts</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card text-center p-4">
+                <div class="stat-value" id="active-accounts">{{ stats.active_accounts }}</div>
+                <div class="text-muted mt-2">Active Sessions</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card text-center p-4">
+                <div class="stat-value" id="selected-groups">{{ stats.selected_groups }}</div>
+                <div class="text-muted mt-2">Selected Groups</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card text-center p-4">
+                <div class="stat-value">0</div>
+                <div class="text-muted mt-2">Running Tasks</div>
+            </div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header"><i class="fas fa-sync"></i> Auto Refresh</div>
+        <div class="card-body">
+            <p class="text-muted">Dashboard statistics update automatically every 10 seconds.</p>
+            <button class="btn btn-primary" onclick="loadStats()"><i class="fas fa-sync"></i> Refresh Now</button>
+        </div>
+    </div>
+</div>
+<script>
+function loadStats() {
+    $.ajax({
+        url: '/api/dashboard/stats',
+        method: 'GET',
+        success: function(data) {
+            $('#total-accounts').text(data.total_accounts);
+            $('#active-accounts').text(data.active_accounts);
+            $('#selected-groups').text(data.selected_groups);
+        }
+    });
+}
+loadStats();
+setInterval(loadStats, 10000);
+</script>
+{% endblock %}

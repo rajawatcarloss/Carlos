@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% block title %}Send Message - Telegram Manager{% endblock %}
+{% block content %}
+<div class="container">
+    <h1 class="mb-4"><i class="fas fa-envelope"></i> Send Message to All Groups</h1>
+    
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header">Select Account & Groups</div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Select Account</label>
+                        <select class="form-select" id="accountSelect" onchange="loadGroups()">
+                            <option>-- Select Account --</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Groups (<span id="groupCount">0</span>)</label>
+                        <div id="groupsList" style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; padding: 10px;"></div>
+                    </div>
+                    
+                    <button class="btn btn-info" onclick="selectAllGroups()"><i class="fas fa-check-double"></i> Select All</button>
+                    <button class="btn btn-warning" onclick="deselectAllGroups()"><i class="fas fa-times"></i> Deselect All</button>
+                    <button class="btn btn-primary" onclick="loadGroupsFromTelegram()"><i class="fas fa-sync"></i> Reload Groups</button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">Compose Message</div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Message</label>
+                        <textarea class="form-control" id="messageText" rows="6" placeholder="Type your message here..."></textarea>
+                        <small class="text-muted">Characters: <span id="charCount">0</span>/4096</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Delay Between Messages (seconds)</label>
+                        <input type="number" class="form-control" id="delayInput" value="2" min="1" max="60">
+                    </div>
+                    
+                    <button class="btn btn-success btn-lg w-100" onclick="sendMessages()" id="sendBtn">
+                        <i class="fas fa-paper-plane"></i> Send to All Selected Groups
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">Status</div>
+                <div class="card-body" id="statusDiv">
+                    <p class="text-muted">Select account and groups to send message</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let selectedGroups = [];
+
+function loadAccounts() {
+    $.ajax({
+        url: '/api/accounts',
+        method: 'GET',
+        success: function(accounts) {
+            const select = $('#accountSelect');
+            select.html('<option>-- Select Account --</option>');
+            accounts.forEach(acc => {
+                select.append(`<option value="${acc.id}">${acc.name} (${acc.phone})</option>`);
+            });
+        }
+    });
+}
+
+function loadGroups() {
+    const accountId = $('#accountSelect').val();
+    if (!accountId) return;
+    
+    $.ajax({
+        url: '/api/groups/' + accountId,
+        method: 'GET',
+        success: function(response) {
+            const container = $('#groupsList');
+            container.empty();
+            selectedGroups = [];
+            
+            response.groups.forEach(group => {
+                const html = `
+                    <div class="form-check mb-2">
+                        <input class="form-check-input group-checkbox" type="checkbox" value="${group.id}" data-group-id="${group.id}" onchange="updateSelectedGroups()">
+                        <label class="form-check-label">${group.group_name}</label>
+                    </div>
+                `;
+                container.append(html);
+            });
+            
+            $('#groupCount').text(response.groups.length);
+        }
+    });
+}
+
+function loadGroupsFromTelegram() {
+    const accountId = $('#accountSelect').val();
+    if (!accountId) {
+        alert('Select an account first');
+        return;
+    }
+    
+    $('#statusDiv').html('<p class="text-info"><i class="fas fa-spinner fa-spin"></i> Loading groups from Telegram...</p>');
+    
+    $.ajax({
+        url: '/api/groups/' + accountId,
+        method: 'GET',
+        success: function(response) {
+            loadGroups();
+            $('#statusDiv').html(`<p class="text-success"><i class="fas fa-check"></i> Loaded ${response.groups.length} groups</p>`);
+        },
+        error: function() {
+            $('#statusDiv').html('<p class="text-danger"><i class="fas fa-exclamation"></i> Error loading groups</p>');
+        }
+    });
+}
+
+function updateSelectedGroups() {
+    selectedGroups = [];
+    $('.group-checkbox:checked').each(function() {
+        selectedGroups.push($(this).data('group-id'));
+    });
+    $('#statusDiv').html(`<p>Selected: <strong>${selectedGroups.length}</strong> groups</p>`);
+}
+
+function selectAllGroups() {
+    $('.group-checkbox').prop('checked', true);
+    updateSelectedGroups();
+}
+
+function deselectAllGroups() {
+    $('.group-checkbox').prop('checked', false);
+    updateSelectedGroups();
+}
+
+$('#messageText').on('input', function() {
+    $('#charCount').text($(this).val().length);
+});
+
+function sendMessages() {
+    const accountId = $('#accountSelect').val();
+    const message = $('#messageText').val();
+    const delay = $('#delayInput').val();
+    
+    if (!accountId) {
+        alert('Select an account');
+        return;
+    }
+    if (!message) {
+        alert('Enter a message');
+        return;
+    }
+    if (selectedGroups.length === 0) {
+        alert('Select at least one group');
+        return;
+    }
+    
+    $('#sendBtn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Sending...');
+    $('#statusDiv').html('<p class="text-info"><i class="fas fa-spinner fa-spin"></i> Sending messages...</p>');
+    
+    $.ajax({
+        url: '/api/send-to-all',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            account_id: accountId,
+            message: message,
+            delay: delay
+        }),
+        success: function(response) {
+            if (response.status === 'success') {
+                $('#statusDiv').html(`<p class="text-success"><i class="fas fa-check-circle"></i> Message sent to ${response.sent_count} groups!</p>`);
+            } else {
+                $('#statusDiv').html(`<p class="text-danger"><i class="fas fa-exclamation"></i> ${response.message}</p>`);
+            }
+            $('#sendBtn').prop('disabled', false).html('<i class="fas fa-paper-plane"></i> Send to All Selected Groups');
+        },
+        error: function() {
+            $('#statusDiv').html('<p class="text-danger"><i class="fas fa-exclamation"></i> Error sending message</p>');
+            $('#sendBtn').prop('disabled', false).html('<i class="fas fa-paper-plane"></i> Send to All Selected Groups');
+        }
+    });
+}
+
+loadAccounts();
+</script>
+{% endblock %}

@@ -7,34 +7,35 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        :root { --primary-color: #0088cc; --secondary-color: #1f2937; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; }
-        .navbar { background: linear-gradient(135deg, #0088cc 0%, #0066aa 100%); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        :root { --primary: #0088cc; --dark: #1a1a2e; }
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; font-family: 'Segoe UI', sans-serif; }
+        .navbar { background: linear-gradient(135deg, #0088cc 0%, #0066aa 100%); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
         .navbar-brand { font-weight: 700; font-size: 24px; }
-        .card { border: none; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: all 0.3s; }
-        .card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
-        .card-header { background: linear-gradient(135deg, #0088cc 0%, #0066aa 100%); color: white; border: none; font-weight: 600; }
-        .btn-primary { background-color: var(--primary-color); border-color: var(--primary-color); }
-        .btn-primary:hover { background-color: #0066aa; border-color: #0066aa; }
-        .stat-value { font-size: 32px; font-weight: 700; color: #0088cc; }
+        .card { border: none; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.1); transition: all 0.3s; }
+        .card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.15); transform: translateY(-2px); }
+        .card-header { background: linear-gradient(135deg, #0088cc 0%, #0066aa 100%); color: white; border: none; border-radius: 12px 12px 0 0; font-weight: 600; }
+        .btn-primary { background: linear-gradient(135deg, #0088cc 0%, #0066aa 100%); border: none; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 136, 204, 0.3); }
+        .login-container { max-width: 400px; margin: 100px auto; }
+        .form-control { border-radius: 8px; border: 2px solid #e0e0e0; padding: 12px 16px; }
+        .form-control:focus { border-color: #0088cc; box-shadow: 0 0 0 0.2rem rgba(0, 136, 204, 0.25); }
+        .badge { padding: 8px 12px; font-size: 12px; }
+        .table { background: white; border-radius: 8px; overflow: hidden; }
         .container-main { margin-top: 30px; margin-bottom: 30px; }
     </style>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="/"><i class="fas fa-paper-plane"></i> Telegram Manager</a>
+            <a class="navbar-brand" href="/"><i class="fas fa-rocket"></i> Telegram Manager</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
-                    <li class="nav-item"><a class="nav-link" href="/"><i class="fas fa-chart-line"></i> Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/accounts"><i class="fas fa-users"></i> Accounts</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/groups"><i class="fas fa-layer-group"></i> Groups</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/sender"><i class="fas fa-envelope"></i> Sender</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/repeater"><i class="fas fa-redo"></i> Repeater</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/logs"><i class="fas fa-scroll"></i> Logs</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/dashboard"><i class="fas fa-users"></i> Accounts</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/send-message"><i class="fas fa-envelope"></i> Send Message</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/logs"><i class="fas fa-history"></i> Logs</a></li>
                 </ul>
             </div>
         </div>

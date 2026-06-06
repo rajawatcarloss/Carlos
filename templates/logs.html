@@ -2,28 +2,72 @@
 {% block title %}Logs - Telegram Manager{% endblock %}
 {% block content %}
 <div class="container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1><i class="fas fa-scroll"></i> Activity Logs</h1>
-        <div><button class="btn btn-success"><i class="fas fa-download"></i> Export</button></div>
+    <h1 class="mb-4"><i class="fas fa-history"></i> Activity Logs</h1>
+    
+    <div class="card">
+        <div class="card-body mb-3">
+            <input type="text" class="form-control" id="searchInput" placeholder="Search logs...">
+        </div>
+        <div class="table-responsive">
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Account</th>
+                        <th>Group</th>
+                        <th>Action</th>
+                        <th>Status</th>
+                        <th>Message</th>
+                    </tr>
+                </thead>
+                <tbody id="logsTable"></tbody>
+            </table>
+        </div>
     </div>
-    <div class="card"><div class="card-body mb-3"><input type="text" class="form-control" placeholder="Search logs..."></div><div class="table-responsive"><table class="table mb-0"><thead><tr><th>Timestamp</th><th>Account</th><th>Action</th><th>Status</th><th>Message</th></tr></thead><tbody id="logsTable"></tbody></table></div></div>
 </div>
+
 <script>
-$.ajax({
-    url: '/api/logs',
-    method: 'GET',
-    success: function(logs) {
-        const table = $('#logsTable');
-        if (logs.length === 0) {
-            table.html('<tr><td colspan="5" class="text-center text-muted py-4">No logs yet</td></tr>');
-            return;
+function loadLogs() {
+    $.ajax({
+        url: '/api/logs',
+        method: 'GET',
+        success: function(logs) {
+            const table = $('#logsTable');
+            table.empty();
+            
+            if (logs.length === 0) {
+                table.html('<tr><td colspan="6" class="text-center text-muted py-4">No logs yet</td></tr>');
+                return;
+            }
+            
+            logs.forEach(log => {
+                const statusBadge = log.status === 'success' 
+                    ? '<span class="badge bg-success">Success</span>'
+                    : '<span class="badge bg-danger">Error</span>';
+                const row = `
+                    <tr>
+                        <td><small>${new Date(log.timestamp).toLocaleString()}</small></td>
+                        <td>${log.account_name || '-'}</td>
+                        <td>${log.group_name || '-'}</td>
+                        <td><small>${log.action}</small></td>
+                        <td>${statusBadge}</td>
+                        <td><small>${log.message}</small></td>
+                    </tr>
+                `;
+                table.append(row);
+            });
         }
-        logs.forEach(log => {
-            const statusColor = log.status === 'success' ? 'success' : 'danger';
-            const row = `<tr><td><small>${log.timestamp}</small></td><td>${log.account_name || '-'}</td><td><small>${log.action}</small></td><td><span class="badge bg-${statusColor}">${log.status}</span></td><td><small>${log.message}</small></td></tr>`;
-            table.append(row);
-        });
-    }
+    });
+}
+
+$('#searchInput').on('keyup', function() {
+    const searchTerm = $(this).val().toLowerCase();
+    $('#logsTable tr').filter(function() {
+        $(this).toggle($(this).text().toLowerCase().indexOf(searchTerm) > -1);
+    });
 });
+
+loadLogs();
+setInterval(loadLogs, 5000);
 </script>
 {% endblock %}

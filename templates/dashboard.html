@@ -1,55 +1,70 @@
 {% extends "base.html" %}
-{% block title %}Dashboard - Telegram Manager{% endblock %}
+{% block title %}Accounts - Telegram Manager{% endblock %}
 {% block content %}
 <div class="container">
-    <h1 class="mb-4"><i class="fas fa-chart-line"></i> Dashboard</h1>
-    <div class="row mb-4">
-        <div class="col-md-3 col-sm-6 mb-3">
-            <div class="card text-center p-4">
-                <div class="stat-value" id="total-accounts">{{ stats.total_accounts }}</div>
-                <div class="text-muted mt-2">Total Accounts</div>
-            </div>
-        </div>
-        <div class="col-md-3 col-sm-6 mb-3">
-            <div class="card text-center p-4">
-                <div class="stat-value" id="active-accounts">{{ stats.active_accounts }}</div>
-                <div class="text-muted mt-2">Active Sessions</div>
-            </div>
-        </div>
-        <div class="col-md-3 col-sm-6 mb-3">
-            <div class="card text-center p-4">
-                <div class="stat-value" id="selected-groups">{{ stats.selected_groups }}</div>
-                <div class="text-muted mt-2">Selected Groups</div>
-            </div>
-        </div>
-        <div class="col-md-3 col-sm-6 mb-3">
-            <div class="card text-center p-4">
-                <div class="stat-value">0</div>
-                <div class="text-muted mt-2">Running Tasks</div>
-            </div>
-        </div>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="fas fa-users"></i> My Telegram Accounts</h1>
+        <a href="/" class="btn btn-primary"><i class="fas fa-plus"></i> Add New Account</a>
     </div>
-    <div class="card">
-        <div class="card-header"><i class="fas fa-sync"></i> Auto Refresh</div>
-        <div class="card-body">
-            <p class="text-muted">Dashboard statistics update automatically every 10 seconds.</p>
-            <button class="btn btn-primary" onclick="loadStats()"><i class="fas fa-sync"></i> Refresh Now</button>
-        </div>
-    </div>
+    <div class="row" id="accountsList"></div>
 </div>
+
 <script>
-function loadStats() {
+function loadAccounts() {
     $.ajax({
-        url: '/api/dashboard/stats',
+        url: '/api/accounts',
         method: 'GET',
-        success: function(data) {
-            $('#total-accounts').text(data.total_accounts);
-            $('#active-accounts').text(data.active_accounts);
-            $('#selected-groups').text(data.selected_groups);
+        success: function(accounts) {
+            const container = $('#accountsList');
+            container.empty();
+            if (accounts.length === 0) {
+                container.html('<div class="col-12 text-center py-5"><p class="text-muted">No accounts yet. <a href="/">Add one now</a></p></div>');
+                return;
+            }
+            accounts.forEach(acc => {
+                const html = `
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div>
+                                        <h5 class="card-title mb-2">${acc.name}</h5>
+                                        <p class="text-muted mb-0"><small><i class="fas fa-phone"></i> ${acc.phone}</small></p>
+                                    </div>
+                                    <span class="badge bg-success">Active</span>
+                                </div>
+                                ${acc.username ? `<p class="text-muted"><small>@${acc.username}</small></p>` : ''}
+                                <p class="text-muted"><small>${acc.first_name} ${acc.last_name}</small></p>
+                                <button class="btn btn-sm btn-primary" onclick="selectGroups(${acc.id}, '${acc.name}')"><i class="fas fa-check-square"></i> Select Groups</button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteAccount(${acc.id})"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.append(html);
+            });
         }
     });
 }
-loadStats();
-setInterval(loadStats, 10000);
+
+function selectGroups(accountId, accountName) {
+    window.location.href = '/send-message?account_id=' + accountId + '&account_name=' + accountName;
+}
+
+function deleteAccount(accountId) {
+    if (confirm('Delete this account?')) {
+        $.ajax({
+            url: '/api/delete-account',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({account_id: accountId}),
+            success: function() {
+                loadAccounts();
+            }
+        });
+    }
+}
+
+loadAccounts();
 </script>
 {% endblock %}

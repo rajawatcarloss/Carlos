@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Telegram Manager</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background: linear-gradient(135deg, #0088cc 0%, #0066aa 100%); min-height: 100vh; display: flex; align-items: center; font-family: 'Segoe UI', sans-serif; }
+        .login-card { border: none; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+        .card-header { background: linear-gradient(135deg, #0088cc 0%, #0066aa 100%); color: white; border: none; border-radius: 16px 16px 0 0; padding: 30px; text-align: center; }
+        .card-header h3 { margin: 0; font-weight: 700; }
+        .form-control { border-radius: 8px; border: 2px solid #e0e0e0; padding: 12px 16px; }
+        .form-control:focus { border-color: #0088cc; box-shadow: 0 0 0 0.2rem rgba(0, 136, 204, 0.25); }
+        .btn-primary { background: linear-gradient(135deg, #0088cc 0%, #0066aa 100%); border: none; border-radius: 8px; padding: 12px; font-weight: 600; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 136, 204, 0.3); }
+        .alert { border-radius: 8px; border: none; }
+        .step-indicator { text-align: center; margin-bottom: 20px; }
+        .step-number { display: inline-block; width: 40px; height: 40px; background: #0088cc; color: white; border-radius: 50%; line-height: 40px; font-weight: 700; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-5">
+                <div class="card login-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-rocket"></i> Telegram Manager</h3>
+                        <small>Add Your Telegram Account</small>
+                    </div>
+                    <div class="card-body p-4">
+                        <div id="step1">
+                            <div class="step-indicator"><span class="step-number">1</span></div>
+                            <h5 class="mb-3">Enter Your Details</h5>
+                            <div class="mb-3">
+                                <label class="form-label">Account Name</label>
+                                <input type="text" class="form-control" id="accountName" placeholder="e.g., Main Account">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Phone Number</label>
+                                <input type="tel" class="form-control" id="phoneNumber" placeholder="+1234567890">
+                            </div>
+                            <button class="btn btn-primary w-100" onclick="requestCode()"><i class="fas fa-arrow-right"></i> Send Code</button>
+                        </div>
+                        
+                        <div id="step2" style="display:none;">
+                            <div class="step-indicator"><span class="step-number">2</span></div>
+                            <h5 class="mb-3">Enter OTP Code</h5>
+                            <p class="text-muted">We sent a code to <strong id="phoneDisplay"></strong></p>
+                            <div class="mb-3">
+                                <label class="form-label">OTP Code</label>
+                                <input type="text" class="form-control" id="otpCode" placeholder="12345">
+                            </div>
+                            <button class="btn btn-primary w-100" onclick="verifyCode()"><i class="fas fa-check"></i> Verify</button>
+                            <button class="btn btn-secondary w-100 mt-2" onclick="backToStep1()">Back</button>
+                        </div>
+                        
+                        <div id="step3" style="display:none;">
+                            <div class="step-indicator"><span class="step-number">3</span></div>
+                            <h5 class="mb-3">Two-Factor Password</h5>
+                            <p class="text-muted">Enter your 2FA password if enabled</p>
+                            <div class="mb-3">
+                                <label class="form-label">Password (Optional)</label>
+                                <input type="password" class="form-control" id="twoFaPassword" placeholder="Leave empty if not enabled">
+                            </div>
+                            <button class="btn btn-primary w-100" onclick="verifyPassword()"><i class="fas fa-lock"></i> Complete Login</button>
+                            <button class="btn btn-secondary w-100 mt-2" onclick="backToStep1()">Back</button>
+                        </div>
+                        
+                        <div id="successMessage" style="display:none;">
+                            <div class="alert alert-success" role="alert">
+                                <i class="fas fa-check-circle"></i> Account added successfully!
+                            </div>
+                            <a href="/dashboard" class="btn btn-primary w-100"><i class="fas fa-arrow-right"></i> Go to Dashboard</a>
+                        </div>
+                        
+                        <div id="errorMessage" class="alert alert-danger" style="display:none;" role="alert"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        let currentPhone = '';
+        let currentName = '';
+        
+        function showError(msg) {
+            $('#errorMessage').text(msg).show();
+            setTimeout(() => $('#errorMessage').hide(), 5000);
+        }
+        
+        function requestCode() {
+            currentName = $('#accountName').val();
+            currentPhone = $('#phoneNumber').val();
+            
+            if (!currentName || !currentPhone) {
+                showError('Please fill all fields');
+                return;
+            }
+            
+            $('#errorMessage').hide();
+            $.ajax({
+                url: '/api/login',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({name: currentName, phone: currentPhone}),
+                success: function(response) {
+                    if (response.status === 'code_sent') {
+                        $('#phoneDisplay').text(currentPhone);
+                        $('#step1').hide();
+                        $('#step2').show();
+                    } else if (response.status === 'already_login') {
+                        $('#step1').hide();
+                        $('#successMessage').show();
+                    } else {
+                        showError(response.message || 'Error sending code');
+                    }
+                },
+                error: function() {
+                    showError('Error. Make sure API ID and HASH are correct in .env file');
+                }
+            });
+        }
+        
+        function verifyCode() {
+            const code = $('#otpCode').val();
+            if (!code) {
+                showError('Please enter the OTP code');
+                return;
+            }
+            
+            $('#errorMessage').hide();
+            $.ajax({
+                url: '/api/verify-code',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({name: currentName, phone: currentPhone, code: code}),
+                success: function(response) {
+                    if (response.status === 'success') {
+                        $('#step2').hide();
+                        $('#successMessage').show();
+                    } else if (response.status === 'password_needed') {
+                        $('#step2').hide();
+                        $('#step3').show();
+                    } else {
+                        showError(response.message || 'Verification failed');
+                    }
+                },
+                error: function() {
+                    showError('Verification failed');
+                }
+            });
+        }
+        
+        function verifyPassword() {
+            const password = $('#twoFaPassword').val();
+            $.ajax({
+                url: '/api/verify-code',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({name: currentName, phone: currentPhone, code: '', password: password}),
+                success: function(response) {
+                    if (response.status === 'success') {
+                        $('#step3').hide();
+                        $('#successMessage').show();
+                    } else {
+                        showError(response.message || 'Password incorrect');
+                    }
+                }
+            });
+        }
+        
+        function backToStep1() {
+            $('#step1').show();
+            $('#step2').hide();
+            $('#step3').hide();
+            $('#successMessage').hide();
+            $('#errorMessage').hide();
+        }
+    </script>
+</body>
+</html>

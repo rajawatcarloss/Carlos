@@ -17,55 +17,71 @@ class TelethonHandler:
         """Login to Telegram with phone number"""
         try:
             session_file = self.get_session_file(name)
-            client = TelegramClient(session_file, Config.API_ID, Config.API_HASH)
+            # Remove .session extension if it exists
+            if session_file.endswith('.session'):
+                session_file = session_file[:-8]
             
+            client = TelegramClient(session_file, Config.API_ID, Config.API_HASH)
             await client.connect()
             
             if not await client.is_user_authorized():
-                await client.send_code_request(phone)
+                # Send code request
+                result = await client.send_code_request(phone)
                 return {'status': 'code_sent', 'phone': phone, 'session_name': name}
             else:
                 me = await client.get_me()
                 return {'status': 'already_login', 'user_id': me.id, 'name': me.first_name}
         except Exception as e:
+            print(f"Login error: {str(e)}")
             return {'status': 'error', 'message': str(e)}
     
     async def verify_code(self, name, phone, code, password=None):
         """Verify OTP code"""
         try:
             session_file = self.get_session_file(name)
-            client = TelegramClient(session_file, Config.API_ID, Config.API_HASH)
+            if session_file.endswith('.session'):
+                session_file = session_file[:-8]
             
+            client = TelegramClient(session_file, Config.API_ID, Config.API_HASH)
             await client.connect()
             
             try:
+                # Sign in with phone and code
                 me = await client.sign_in(phone, code)
+                print(f"Successfully signed in as {me.first_name}")
             except SessionPasswordNeededError:
+                # 2FA is enabled
                 if not password:
+                    await client.disconnect()
                     return {'status': 'password_needed'}
                 me = await client.sign_in(password=password)
+                print(f"Successfully signed in with 2FA as {me.first_name}")
             
             self.clients[name] = client
             
             return {
                 'status': 'success',
                 'user_id': me.id,
-                'first_name': me.first_name,
-                'last_name': me.last_name,
-                'username': me.username
+                'first_name': me.first_name or '',
+                'last_name': me.last_name or '',
+                'username': me.username or ''
             }
         except Exception as e:
+            print(f"Verify code error: {str(e)}")
             return {'status': 'error', 'message': str(e)}
     
-    async def get_groups(self, name):
+    async def get_groups(self, name, phone):
         """Get all groups/channels for account"""
         try:
             session_file = self.get_session_file(name)
-            client = TelegramClient(session_file, Config.API_ID, Config.API_HASH)
+            if session_file.endswith('.session'):
+                session_file = session_file[:-8]
             
+            client = TelegramClient(session_file, Config.API_ID, Config.API_HASH)
             await client.connect()
             
             if not await client.is_user_authorized():
+                await client.disconnect()
                 return {'status': 'error', 'message': 'Not logged in'}
             
             dialogs = await client.get_dialogs()
@@ -75,31 +91,36 @@ class TelethonHandler:
                 if dialog.is_group or dialog.is_channel:
                     groups.append({
                         'id': dialog.id,
-                        'name': dialog.name,
+                        'name': dialog.name or 'Unknown',
                         'type': 'channel' if dialog.is_channel else 'group'
                     })
             
             await client.disconnect()
             return {'status': 'success', 'groups': groups}
         except Exception as e:
+            print(f"Get groups error: {str(e)}")
             return {'status': 'error', 'message': str(e)}
     
     async def send_message(self, name, group_id, message_text):
         """Send message to group"""
         try:
             session_file = self.get_session_file(name)
-            client = TelegramClient(session_file, Config.API_ID, Config.API_HASH)
+            if session_file.endswith('.session'):
+                session_file = session_file[:-8]
             
+            client = TelegramClient(session_file, Config.API_ID, Config.API_HASH)
             await client.connect()
             
             if not await client.is_user_authorized():
+                await client.disconnect()
                 return {'status': 'error', 'message': 'Not logged in'}
             
-            await client.send_message(group_id, message_text)
+            await client.send_message(int(group_id), message_text)
             await client.disconnect()
             
             return {'status': 'success'}
         except Exception as e:
+            print(f"Send message error: {str(e)}")
             return {'status': 'error', 'message': str(e)}
     
     async def send_to_all_groups(self, account_id, message_text, delay=1):
@@ -115,30 +136,36 @@ class TelethonHandler:
                 return {'status': 'error', 'message': 'Account not found'}
             
             session_file = self.get_session_file(account['name'])
-            client = TelegramClient(session_file, Config.API_ID, Config.API_HASH)
+            if session_file.endswith('.session'):
+                session_file = session_file[:-8]
             
+            client = TelegramClient(session_file, Config.API_ID, Config.API_HASH)
             await client.connect()
             
             if not await client.is_user_authorized():
+                await client.disconnect()
                 return {'status': 'error', 'message': 'Not logged in'}
             
             groups = db.get_groups(account_id)
             sent_count = 0
+            failed_count = 0
             
             for group in groups:
                 if group['is_selected']:
                     try:
-                        await client.send_message(group['group_id'], message_text)
+                        await client.send_message(int(group['group_id']), message_text)
                         db.add_log(account['name'], group['group_name'], 'send_message', 'success', message_text[:50])
                         sent_count += 1
                         await asyncio.sleep(delay)
                     except Exception as e:
-                        db.add_log(account['name'], group['group_name'], 'send_message', 'error', str(e))
+                        failed_count += 1
+                        db.add_log(account['name'], group['group_name'], 'send_message', 'error', str(e)[:100])
             
             await client.disconnect()
             
-            return {'status': 'success', 'sent_count': sent_count}
+            return {'status': 'success', 'sent_count': sent_count, 'failed_count': failed_count}
         except Exception as e:
+            print(f"Send to all error: {str(e)}")
             return {'status': 'error', 'message': str(e)}
 
 telethon_handler = TelethonHandler()
